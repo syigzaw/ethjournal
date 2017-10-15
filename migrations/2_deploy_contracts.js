@@ -1,8 +1,7 @@
-var ConvertLib = artifacts.require("./ConvertLib.sol");
-var MetaCoin = artifacts.require("./MetaCoin.sol");
+var EthJournal = artifacts.require("./EthJournal.sol");
+var Paper = artifacts.require("./Paper.sol");
 
 module.exports = function(deployer) {
-  deployer.deploy(ConvertLib);
-  deployer.link(ConvertLib, MetaCoin);
-  deployer.deploy(MetaCoin);
+	deployer.deploy(EthJournal);
+	deployer.deploy(Paper);
 };

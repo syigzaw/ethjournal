@@ -1,4 +1,6 @@
-pragma solidity ^0.4.17;
+pragma solidity ^0.4.15;
+
+import './EthJournal.sol';
 
 contract Paper {
 
@@ -16,27 +18,30 @@ contract Paper {
 	address public author;
 	address public editor;
 	mapping (address => bool) isPeerReviewer;
-	address[] public isPeerReviewerArray;
+	address[] isPeerReviewerArray;
 	mapping (address => bool) peerReviewerTracker;
 	uint public peerReviewsToSubmit;
-	address public addressOfPaper;
+	uint public paperUID;
 	uint public price;
 	address public ethjournal;
 	mapping (address => bool) public reader;
+	address[] nonDeletedPeerReviewerArray;
 
-	function Paper(string _title, address _editor, address[] _peerReviewers,address _addressOfPaper, uint _price, address _ethjournal) public {
-		author = msg.sender;
+	function Paper(string _title, address _editor, uint _paperUID, uint _price, address[] allAuthors, address _ethjournal) public {
+		author = tx.origin;
 		title = _title;
 		editor = _editor;
-		isPeerReviewerArray = _peerReviewers;
-		peerReviewsToSubmit = _peerReviewers.length;
-		for (uint i = 0; i < _peerReviewers.length; i++) {
-		    isPeerReviewer[_peerReviewers[i]] = true;
-		    peerReviewerTracker[_peerReviewers[i]] = true;
-		}
-		addressOfPaper = _addressOfPaper;
+		paperUID = _paperUID;
 		price = _price;
-		ethjournal = _ethjournal;
+		ethjournal = EthJournal(_ethjournal);
+		while (peerReviewsToSubmit != 2) {
+		    isPeerReviewerArray.push(allAuthors[(uint(block.blockhash(block.number)) + peerReviewsToSubmit) % allAuthors.length]);
+		    peerReviewsToSubmit++;
+		}
+		for (uint i = 0; i < peerReviewsToSubmit; i++) {
+		    isPeerReviewer[isPeerReviewerArray[i]] = true;
+		    peerReviewerTracker[isPeerReviewerArray[i]] = true;
+		}
 		stage = Stages.submittedForPeerReview;
 	}
 
@@ -72,6 +77,7 @@ contract Paper {
 	function publish() public returns (bool) {
 		require(msg.sender == editor && stage == Stages.peerReviewed);
 		stage = Stages.published;
+		EthJournal(ethjournal).addPaper(this);
 	}
 
 	function reject() public returns (bool) {
@@ -94,7 +100,6 @@ contract Paper {
 		require(stage == Stages.published);
 		author.transfer(msg.value/2);
 		editor.transfer(msg.value/4);
-		address[] nonDeletedPeerReviewerArray;
 		for (uint i = 0; i < isPeerReviewerArray.length; i++) {
 			if (isPeerReviewer[isPeerReviewerArray[i]]) {
 				nonDeletedPeerReviewerArray.push(isPeerReviewerArray[i]);
